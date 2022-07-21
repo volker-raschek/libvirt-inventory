@@ -3,11 +3,11 @@
 
     # Change the defaults here if you like, can be omitted
     libvirt_connection = qemu:///system
-    libvirt_dhcp_lease_file = /var/lib/libvirt/dnsmasq/virbr0.status
+    libvirt_dhcp_lease_file = file:///var/lib/libvirt/dnsmasq/virbr0.status
 
     # Note: you may also use something like:
     # libvirt_connection = qemu+ssh://root@hypervisor/system
-    # libvirt_dhcp_lease_file = root@hypervisor:/var/lib/libvirt/dnsmasq/virbr0.status
+    # libvirt_dhcp_lease_file = ssh://root@hypervisor:/var/lib/libvirt/dnsmasq/virbr0.status
 
 
 # All other sections are either for groups or hosts
@@ -73,4 +73,3 @@
 
     # Arbitrary vars are again supported
     one_vm_specific_variable = value
-

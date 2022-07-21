@@ -26,16 +26,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from functools import partial
 from fnmatch import fnmatch as _fnmatch
+from functools import partial
+from paramiko import SSHClient
+from scp import SCPClient
+from urllib.parse import urlparse, ParseResultBytes, ParseResult
 from xml.dom import minidom
-import configparser
 import argparse
+import configparser
+import json
 import libvirt
 import logging
-import json
-import sys
 import os
+import sys
+import tempfile
+import uuid
 
 logger = logging.getLogger('libvirt-inventory')
 handler = logging.StreamHandler()
@@ -73,6 +78,37 @@ def list_leases(lease_file: str = None) -> dict:
 
     Connects to remote host to get file if necessary
     """
+
+    file_url = urlparse(lease_file)
+
+    match file_url.scheme:
+        case "ssh":
+            dest = os.path.join(tempfile.gettempdir(), uuid.uuid4().__str__())
+            copy_leases_via_ssh(file_url, dest)
+            return list_leases_by_file(dest)
+        case "file"|_:
+            return list_leases_by_file(file_url.path)
+
+def copy_leases_via_ssh(url: ParseResultBytes = None, dest: str = None):
+    """
+    Copy a lease file via scp from remote to local
+    """
+
+    ssh = SSHClient()
+    ssh.load_system_host_keys()
+
+    # Use SSH default port 22 if not defined
+    if url.port is None:
+        url = ParseResult(scheme=url.scheme, netloc=url.netloc + ":22", path=url.path, params=url.params, query=url.params, fragment=url.fragment,)
+
+    ssh.connect(hostname=url.hostname, port=url.port, username=url.username)
+
+    scp = SCPClient(ssh.get_transport())
+    scp.get(url.path, dest)
+    scp.close()
+
+
+def list_leases_by_file(lease_file: str = None) -> dict:
     logger.debug('Reading leases from file: {}'.format(lease_file))
     if ':' in lease_file:
         import paramiko
